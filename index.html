@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电机接线端子规格计算</title>
+<style>
+  :root {
+    --bg: #0a0e17; --card: rgba(20,30,48,0.7); --card-border: rgba(80,160,255,0.18);
+    --accent: #38e1ff; --accent2: #7c5cff; --ok: #36e07a; --warn: #ffb547;
+    --text: #e6eefc; --text-dim: #8a9bb5; --mono: "SFMono-Regular","JetBrains Mono",Consolas,"Courier New",monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 800px at 20% -10%, #16213a 0%, var(--bg) 55%),
+                radial-gradient(900px 600px at 90% 10%, #1a1340 0%, transparent 60%);
+    color: var(--text); min-height: 100vh; padding: 32px 18px 60px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { font-size: 28px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header p { color: var(--text-dim); margin-top: 6px; font-size: 13px; }
+  header .conn { color: var(--warn); margin-top: 4px; font-size: 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+    padding: 18px; position: relative; overflow: hidden; backdrop-filter: blur(8px); }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 100%;
+    background: linear-gradient(90deg, var(--accent), transparent); }
+  .card h3 { font-size: 14px; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .field label { color: var(--text-dim); }
+  .field input { background: #060a12; border: 1px solid var(--card-border); color: var(--text);
+    border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 14px; width: 100%; }
+  .field input:focus { outline: none; border-color: var(--accent); }
+
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.06); font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .row .k { color: var(--text-dim); flex-shrink: 0; }
+  .row .v { text-align: right; font-family: var(--mono); word-break: break-all; color: var(--text); }
+  .row .v.hl { color: var(--ok); font-weight: 700; }
+  .row .v.model { color: var(--accent); }
+
+  .seg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .seg-head .name { font-size: 14px; color: var(--accent); font-weight: 700; letter-spacing: .5px; }
+  .del { cursor: pointer; font-size: 12px; color: var(--warn); background: transparent;
+    border: 1px solid rgba(255,181,71,0.4); padding: 4px 10px; border-radius: 8px; }
+  .del:hover { background: rgba(255,181,71,0.12); }
+  .result-title { font-size: 12px; color: var(--accent2); margin: 14px 0 4px; letter-spacing: .5px; }
+
+  .add-btn { display: block; margin: 18px auto 0; cursor: pointer; border: 1px dashed var(--accent);
+    background: transparent; color: var(--accent); padding: 12px 28px; border-radius: 12px;
+    font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+  .add-btn:hover { background: rgba(56,225,255,0.1); }
+  .reward-btn { border-color: var(--warn); color: var(--warn); margin-top: 12px; }
+  .reward-btn:hover { background: rgba(255,181,71,0.12); }
+  .disclaimer { margin-top: 18px; padding: 14px 18px; border-radius: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px; color: var(--text-dim); line-height: 1.9; }
+
+  .note { margin-top: 26px; padding: 16px 18px; border-radius: 12px; background: rgba(124,92,255,0.08);
+    border: 1px solid rgba(124,92,255,0.25); font-size: 13px; color: var(--text-dim); line-height: 1.8; }
+  .note b { color: var(--text); }
+  .note code { font-family: var(--mono); color: var(--accent); }
+  footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 32px; }
+
+  /* 密码门禁 */
+  .gate { position: fixed; inset: 0; background: rgba(5,8,15,0.96); display: flex;
+    align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(6px); }
+  .gate-box { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px;
+    padding: 32px 36px; text-align: center; max-width: 340px; width: 90%; }
+  .gate-box h2 { font-size: 18px; margin-bottom: 18px; color: var(--text); }
+  .gate-box input { width: 100%; background: #060a12; border: 1px solid var(--card-border);
+    color: var(--text); border-radius: 8px; padding: 10px 12px; font-size: 15px;
+    font-family: var(--mono); margin-bottom: 14px; }
+  .gate-box input:focus { outline: none; border-color: var(--accent); }
+  .gate-box button { width: 100%; cursor: pointer; border: none;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #04121c;
+    font-weight: 700; padding: 10px; border-radius: 8px; font-size: 15px; }
+  .gate-err { color: var(--warn); font-size: 12px; margin-top: 10px; min-height: 16px; }
+</style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <h2>请输入验证码</h2>
+    <input id="gateInput" type="password" placeholder="请输入验证码" autofocus>
+    <button id="gateBtn">进入</button>
+    <div id="gateErr" class="gate-err"></div>
+  </div>
+</div>
+<div class="wrap" id="wrap" style="display:none">
+  <header>
+    <h1>电机接线端子规格计算</h1>
+    <p>输入进火路数、线规、并绕根数，自动计算接线端子规格 · 支持多分段</p>
+    <div class="conn">接法假定：三角形（△）接法</div>
+  </header>
+
+  <div class="grid" id="grid">
+    <!-- 分段容器 -->
+    <div id="segments"></div>
+
+    <!-- 汇总 -->
+    <div class="card" id="summaryCard">
+      <h3><span class="dot"></span>汇总</h3>
+      <div id="summaryBody"></div>
+      <button class="add-btn reward-btn" id="rewardBtn">打赏</button>
+    </div>
+  </div>
+
+  <button class="add-btn" id="addBtn">＋ 添加分段</button>
+
+  <div class="note">
+    <b>术语与公式：</b><br>
+    • <b>进火路数</b>：绕组并联支路数 a，即每相几路并接引出。<br>
+    • <b>线规</b>：单根铜线直径 d (mm)，截面积 S₁ = π·d²/4 (mm²)。<br>
+    • <b>并绕根数</b>：n（每线圈几根导线并绕），并绕截面积 S_p = S₁ × n。<br>
+    • <b>端子总截面积</b> S_t = S_p × a × 2 = S₁ × n × a × 2 —— 三角形（△）接法下，每根出线端子节点汇集两相绕组，故在并绕截面积 × 进火路数基础上再 ×2。<br>
+    • <b>等效铜线直径</b> d_eq = √(4·S_t/π)，用于选接线柱/铜棒直径。<br>
+    • <b>推荐端子</b>：将 S_t 向上取整到标准铜端子截面档（1.5/2.5/4/6/10/16/25/35/50/70/95/120/150/185/240/300/400/500/630 mm²），型号对应 DT-/OT- 系列铜端子。<br>
+    <b>接法说明：</b>本工具按<b>三角形（△）接法</b>计算，出线端子截面已含 ×2 因子。若实际为星形（Y）接法，请将 ×2 因子改为 ×1（三相各自独立引出，端子截面 = 并绕截面积 × 进火路数），可告知我调整。<br>
+    <b>说明：</b>结果为理论计算值，实际选型请结合电流密度、温升与绝缘要求校核。
+  </div>
+
+  <div class="disclaimer">免责声明：本站为个人博客，博客所发布的一切软件的文章仅限用于学习和研究目的；不得将上述内容用于商业或者非法用途，否则，一切后果请用户自负。本站信息来自网络，版权争议与本站无关，您必须在下载后的24个小时之内，从您的电脑中彻底删除上述内容。访问和下载本站内容，说明您已同意上述条款。本站为非盈利性站点，本站不贩卖软件，所有内容不作为商业行为。</div>
+
+  <footer>本地计算工具，数据不上传。</footer>
+</div>
+
+<script>
+(function () {
+  const STD = [1.5,2.5,4,6,10,16,25,35,50,70,95,120,150,185,240,300,400,500,630];
+  const segmentsEl = document.getElementById('segments');
+  const summaryBody = document.getElementById('summaryBody');
+
+  let segs = [
+    { roads: 2, dia: 1.0, strands: 3 },
+    { roads: 4, dia: 0.71, strands: 2 }
+  ];
+
+  function pickStd(s) {
+    if (s <= 0) return null;
+    for (const v of STD) if (s <= v) return v;
+    return null; // 超 630
+  }
+
+  function compute(s) {
+    const d = parseFloat(s.dia) || 0;
+    const n = parseFloat(s.strands) || 0;
+    const a = parseFloat(s.roads) || 0;
+    const S1 = d > 0 ? Math.PI * d * d / 4 : 0;
+    const Sp = S1 * n;
+    const St = Sp * a * 2;              // 三角形接法：并绕截面积 × 进火路数 × 2
+    const deq = St > 0 ? Math.sqrt(4 * St / Math.PI) : 0;
+    const std = pickStd(St);
+    const model = std ? ('DT-' + std + ' / OT-' + std + ' 铜端子')
+                      : (St > 0 ? '超 630，建议定制铜排' : '—');
+    return { S1, Sp, St, deq, std, model, n, a };
+  }
+
+  function resultRows(r) {
+    const rows = [
+      { k: '单根截面积 S₁', v: r.S1 ? r.S1.toFixed(3) + ' mm²' : '—' },
+      { k: '并绕截面积 (×' + r.n + ')', v: r.Sp ? r.Sp.toFixed(2) + ' mm²' : '—' },
+      { k: '端子总截面积 (×' + r.a + ' ×2)', v: r.St ? r.St.toFixed(2) + ' mm²' : '—', hl: true },
+      { k: '等效铜线直径', v: r.deq ? r.deq.toFixed(2) + ' mm' : '—' },
+      { k: '推荐端子截面', v: r.std ? r.std + ' mm²' : '—', hl: true },
+      { k: '推荐端子型号', v: r.model, model: true }
+    ];
+    return rows.map(x => {
+      const cls = x.hl ? ' hl' : (x.model ? ' model' : '');
+      return '<div class="row"><span class="k">' + x.k + '</span><span class="v' + cls + '">' + x.v + '</span></div>';
+    }).join('');
+  }
+
+  function buildSegment(seg, idx) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML =
+      '<div class="seg-head"><span class="name">分段 ' + (idx + 1) + '</span>' +
+      '<button class="del">删除</button></div>' +
+      '<div class="fields">' +
+        '<div class="field"><label>进火路数 a</label><input class="in-roads" type="number" min="1" step="1" value="' + seg.roads + '"></div>' +
+        '<div class="field"><label>线规直径 d (mm)</label><input class="in-dia" type="number" min="0" step="0.01" value="' + seg.dia + '"></div>' +
+        '<div class="field"><label>并绕根数 n</label><input class="in-strands" type="number" min="1" step="1" value="' + seg.strands + '"></div>' +
+      '</div>' +
+      '<div class="result-title">计算结果</div>' +
+      '<div class="results"></div>';
+
+    const roads = card.querySelector('.in-roads');
+    const dia = card.querySelector('.in-dia');
+    const strands = card.querySelector('.in-strands');
+    const results = card.querySelector('.results');
+
+    function refresh() {
+      seg.roads = roads.value; seg.dia = dia.value; seg.strands = strands.value;
+      results.innerHTML = resultRows(compute(seg));
+      updateSummary();
+    }
+    [roads, dia, strands].forEach(el => el.addEventListener('input', refresh));
+    card.querySelector('.del').addEventListener('click', () => {
+      const i = segs.indexOf(seg);
+      if (i >= 0) segs.splice(i, 1);
+      renderAll();
+    });
+
+    results.innerHTML = resultRows(compute(seg));
+    return card;
+  }
+
+  function renderAll() {
+    segmentsEl.innerHTML = '';
+    segs.forEach((s, i) => segmentsEl.appendChild(buildSegment(s, i)));
+    updateSummary();
+  }
+
+  function updateSummary() {
+    if (segs.length === 0) { summaryBody.innerHTML = '<div class="row"><span class="k">状态</span><span class="v">无分段</span></div>'; return; }
+    let maxSt = 0, maxIdx = -1, totalSt = 0;
+    segs.forEach((s, i) => {
+      const r = compute(s);
+      totalSt += r.St;
+      if (r.St > maxSt) { maxSt = r.St; maxIdx = i; }
+    });
+    const maxStd = pickStd(maxSt);
+    const model = maxStd ? ('DT-' + maxStd + ' / OT-' + maxStd + ' 铜端子')
+                         : (maxSt > 0 ? '超 630，建议定制铜排' : '—');
+    const totalStd = pickStd(totalSt);
+    const totalModel = totalStd ? ('DT-' + totalStd + ' / OT-' + totalStd + ' 铜端子')
+                                : (totalSt > 0 ? '超 630，建议定制铜排' : '—');
+    const rows = [
+      { k: '分段数量', v: segs.length + ' 段' },
+      { k: '最大端子总截面段', v: '分段 ' + (maxIdx + 1) },
+      { k: '最大端子总截面', v: maxSt ? maxSt.toFixed(2) + ' mm²' : '—', hl: true },
+      { k: '推荐最大端子型号', v: model, model: true },
+      { k: '全部端子截面合计', v: totalSt ? totalSt.toFixed(2) + ' mm²' : '—' },
+      { k: '按合计推荐端子截面', v: totalStd ? totalStd + ' mm²' : '—', hl: true },
+      { k: '按合计推荐端子型号', v: totalModel, model: true }
+    ];
+    summaryBody.innerHTML = rows.map(x => {
+      const cls = x.hl ? ' hl' : (x.model ? ' model' : '');
+      return '<div class="row"><span class="k">' + x.k + '</span><span class="v' + cls + '">' + x.v + '</span></div>';
+    }).join('');
+  }
+
+  document.getElementById('addBtn').addEventListener('click', () => {
+    segs.push({ roads: 1, dia: 0.8, strands: 2 });
+    renderAll();
+  });
+  document.getElementById('rewardBtn').addEventListener('click', () => {
+    window.open('https://sgc20261009.github.io/reward-support/', '_blank');
+  });
+
+  renderAll();
+
+  // 验证码门禁：优先拉线上清单 codes.json（由腾讯文档导出同步），拉不到则回退内置快照
+  // 更新验证码方法：改 codes.json 的 codes 数组即可，网页无需改代码。
+  const VALID_CODES_SNAPSHOT = ['sgc2026k07', '3344', '0521']; // 同步自腾讯文档 DRGhzeUVVRUJ2Tmp4
+  let VALID_CODES = VALID_CODES_SNAPSHOT.slice();
+  let codesLoaded = false;
+  async function loadCodes() {
+    try {
+      const res = await fetch('./codes.json', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.codes) && data.codes.length) {
+          VALID_CODES = data.codes.map(String);
+          codesLoaded = true;
+        }
+      }
+    } catch (e) {
+      // 离线或本地 file:// 跨域被拦截：保留内置快照
+      VALID_CODES = VALID_CODES_SNAPSHOT.slice();
+    }
+  }
+  loadCodes();
+  const gate = document.getElementById('gate');
+  const wrap = document.getElementById('wrap');
+  function tryEnter() {
+    const v = document.getElementById('gateInput').value.trim();
+    if (VALID_CODES.indexOf(v) !== -1) {
+      gate.style.display = 'none';
+      wrap.style.display = 'block';
+    } else {
+      document.getElementById('gateErr').textContent = '验证码错误，请重试';
+    }
+  }
+  document.getElementById('gateBtn').addEventListener('click', tryEnter);
+  document.getElementById('gateInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') tryEnter();
+  });
+})();
+</script>
+</body>
+</html>
